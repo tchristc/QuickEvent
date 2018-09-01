@@ -1,30 +1,24 @@
 <script src="scripts/vue/vue.min.js"></script>
-<script type="text/x-template" id="polygraph-template">
-  <g>
-    <circle cx="100" cy="100" r="80"></circle>
-    <polygon :points="points" class="draggable"></polygon>
-    <axis-label
-      v-for="(stat, index) in stats"
-      :stat="stat"
-      :index="index"
-      :total="stats.length">
-    </axis-label>
+<script type="text/x-template" id="pipeline-template">
+  <plugin
+    v-for="(p, i) in plugins"
+    :data="p">
+  </plugin>
+</script> 
+
+<script type="text/x-template" id="plugin-template">
+  <g class="draggable" style="fill:transparent;stroke:black;stroke-width:1;">
+      <rect x="3" y="3" rx="10" ry="10" width="50" height="50"/>
+      <line x1="3" y1="13" x2="53" y2="13"></line>
   </g>
-</script>
+</script> 
 
-<!-- template for the axis label component. -->
-<script type="text/x-template" id="axis-label-template">
-  <text :x="point.x" :y="point.y">{{stat.label}}</text>
-</script>
-
-<!-- demo root element -->
-<div id="demo">
-  <!-- Use the component -->
-  <svg width="200" height="200" onload="makeDraggable(evt)">
-    <polygraph :stats="stats"></polygraph>
+<div id="app">
+  <svg width="100%" height="100%" onload="makeDraggable(evt)">
+    <pipeline :plugins="plugins"></pipeline>
   </svg>
   <!-- controls -->
-  <div v-for="stat in stats">
+  <!-- <div v-for="stat in stats">
     <label>{{stat.label}}</label>
     <input type="range" v-model="stat.value" min="0" max="100">
     <span>{{stat.value}}</span>
@@ -34,97 +28,61 @@
     <input name="newlabel" v-model="newLabel">
     <button @click="add">Add a Stat</button>
   </form>
-  <pre id="raw">{{ stats }}</pre>
+  <pre id="raw">{{ stats }}</pre> -->
 </div>
 
-<p style="font-size:12px">* input[type="range"] requires IE10 or above.</p>
-
 <script>
-var stats = [
-  { label: 'A', value: 100 },
-  { label: 'B', value: 100 },
-  { label: 'C', value: 100 },
-  { label: 'D', value: 100 },
-  { label: 'E', value: 100 },
-  { label: 'F', value: 100 }
+var plugins = [
+  { label: 'plugin a', x: 3, y: 3, w:50, h:50 }
 ]
 
 // A resusable polygon graph component
-Vue.component('polygraph', {
-  props: ['stats'],
-  template: '#polygraph-template',
-  computed: {
-    // a computed property for the polygon's points
-    points: function () {
-      var total = this.stats.length
-      return this.stats.map(function (stat, i) {
-        var point = valueToPoint(stat.value, i, total)
-        return point.x + ',' + point.y
-      }).join(' ')
-    }
-  },
+Vue.component('pipeline', {
+  props: ['plugins'],
+  template: '#pipeline-template',
   components: {
     // a sub component for the labels
-    'axis-label': {
+    'plugin': {
       props: {
-        stat: Object,
-        index: Number,
-        total: Number
+        data: Object
       },
-      template: '#axis-label-template',
-      computed: {
-        point: function () {
-          return valueToPoint(
-            +this.stat.value + 10,
-            this.index,
-            this.total
-          )
-        }
-      }
+      template: '#plugin-template'
+      // computed: {
+      //   point: function () {
+      //     return valueToPoint(
+      //       +this.stat.value + 10,
+      //       this.index,
+      //       this.total
+      //     )
+      //   }
+      // }
     }
   }
-})
+});
 
-// math helper...
-function valueToPoint (value, index, total) {
-  var x     = 0
-  var y     = -value * 0.8
-  var angle = Math.PI * 2 / total * index
-  var cos   = Math.cos(angle)
-  var sin   = Math.sin(angle)
-  var tx    = x * cos - y * sin + 100
-  var ty    = x * sin + y * cos + 100
-  return {
-    x: tx,
-    y: ty
-  }
-}
-
-// bootstrap the demo
 new Vue({
-  el: '#demo',
+  el: '#app',
   data: {
-    newLabel: '',
-    stats: stats
-  },
-  methods: {
-    add: function (e) {
-      e.preventDefault()
-      if (!this.newLabel) return
-      this.stats.push({
-        label: this.newLabel,
-        value: 100
-      })
-      this.newLabel = ''
-    },
-    remove: function (stat) {
-      if (this.stats.length > 3) {
-        this.stats.splice(this.stats.indexOf(stat), 1)
-      } else {
-        alert('Can\'t delete more!')
-      }
-    }
+    plugins: plugins
   }
+  // methods: {
+  //   add: function (e) {
+  //     e.preventDefault()
+  //     if (!this.newLabel) return
+  //     this.stats.push({
+  //       label: this.newLabel,
+  //       value: 100
+  //     })
+  //     this.newLabel = ''
+  //   },
+  //   remove: function (stat) {
+  //     if (this.stats.length > 3) {
+  //       this.stats.splice(this.stats.indexOf(stat), 1)
+  //     } else {
+  //       alert('Can\'t delete more!')
+  //     }
+  //   }
+  // }
 });
 </script>
 
