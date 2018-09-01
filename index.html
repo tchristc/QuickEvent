@@ -1,38 +1,43 @@
 <script src="scripts/vue/vue.min.js"></script>
 
 <script type="text/x-template" id="pipeline-template">
-  <plugin v-for="stat in stats" :stat="stat"></plugin>
+  <svg width="100%" height="100%" ref="svgCanvas" >
+      <plugin v-for="data in stats" :data="data"></plugin>
+  </svg>
 </script> 
 
 <script type="text/x-template" id="plugin-template">
   <g class="draggable" style="fill:transparent;stroke:black;stroke-width:1;">
-      <rect x="3" y="3" rx="10" ry="10" width="50" height="50"/>
-      <line x1="3" y1="13" x2="53" y2="13"></line>
+      <rect :x="data.x" :y="data.y" rx="5" ry="5" :width="data.w" :height="data.h"/>
+      <line :x1="data.x" :y1="data.x+10" :x2="data.x+data.w" :y2="data.x+10"></line>
   </g>
 </script> 
 
 <div id="app">
-<button @click="add">add</button>
-<svg width="100%" height="100%" onload="makeDraggable(evt)">
+  <button @click="add">add</button>
   <pipeline :stats="stats"></pipeline>
-</svg>
 </div>
 
 <script>
 var stats = [
-  { label: 'plugin a', x: 3, y: 3, w:50, h:50 },
-  { label: 'plugin b', x: 3, y: 3, w:50, h:50 }
+  { label: 'plugin a', x: 3, y: 3, w:100, h:50 },
+  { label: 'plugin b', x: 50, y:50, w:100, h:50 }
 ];
-
-
 
 Vue.component('pipeline', {
   props: ['stats'],
-  template: '#pipeline-template'
+  template: '#pipeline-template',
+  created: function(){
+    console.log('Created');
+  },
+  mounted: function(){
+    console.log('Mounted');
+    console.log(this.$refs.svgCanvas);
+  }
 });
 
 Vue.component('plugin', {
-  props: ['stat'],
+  props: ['data'],
   template: '#plugin-template'
 });
 
@@ -52,7 +57,7 @@ var vm = new Vue({
       this.stats.splice(this.stats.indexOf(stat), 1)
     }
   }
-})
+});
 </script>
 
 <style>
