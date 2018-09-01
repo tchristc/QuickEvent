@@ -1,9 +1,7 @@
 <script src="scripts/vue/vue.min.js"></script>
+
 <script type="text/x-template" id="pipeline-template">
-  <plugin
-    v-for="(p, i) in plugins"
-    :data="p">
-  </plugin>
+  <plugin v-for="stat in stats" :stat="stat"></plugin>
 </script> 
 
 <script type="text/x-template" id="plugin-template">
@@ -14,76 +12,47 @@
 </script> 
 
 <div id="app">
-  <svg width="100%" height="100%" onload="makeDraggable(evt)">
-    <pipeline :plugins="plugins"></pipeline>
-  </svg>
-  <!-- controls -->
-  <!-- <div v-for="stat in stats">
-    <label>{{stat.label}}</label>
-    <input type="range" v-model="stat.value" min="0" max="100">
-    <span>{{stat.value}}</span>
-    <button @click="remove(stat)" class="remove">X</button>
-  </div>
-  <form id="add">
-    <input name="newlabel" v-model="newLabel">
-    <button @click="add">Add a Stat</button>
-  </form>
-  <pre id="raw">{{ stats }}</pre> -->
+<button @click="add">add</button>
+<svg width="100%" height="100%" onload="makeDraggable(evt)">
+  <pipeline :stats="stats"></pipeline>
+</svg>
 </div>
 
 <script>
-var plugins = [
-  { label: 'plugin a', x: 3, y: 3, w:50, h:50 }
-]
+var stats = [
+  { label: 'plugin a', x: 3, y: 3, w:50, h:50 },
+  { label: 'plugin b', x: 3, y: 3, w:50, h:50 }
+];
 
-// A resusable polygon graph component
+
+
 Vue.component('pipeline', {
-  props: ['plugins'],
-  template: '#pipeline-template',
-  components: {
-    // a sub component for the labels
-    'plugin': {
-      props: {
-        data: Object
-      },
-      template: '#plugin-template'
-      // computed: {
-      //   point: function () {
-      //     return valueToPoint(
-      //       +this.stat.value + 10,
-      //       this.index,
-      //       this.total
-      //     )
-      //   }
-      // }
-    }
-  }
+  props: ['stats'],
+  template: '#pipeline-template'
 });
 
-new Vue({
+Vue.component('plugin', {
+  props: ['stat'],
+  template: '#plugin-template'
+});
+
+var vm = new Vue({
   el: '#app',
   data: {
-    plugins: plugins
+    stats: stats
+  },
+  methods: {
+    add: function (e) {
+      e.preventDefault()
+      this.stats.push({
+        value: 100
+      });
+    },
+    remove: function (stat) {
+      this.stats.splice(this.stats.indexOf(stat), 1)
+    }
   }
-  // methods: {
-  //   add: function (e) {
-  //     e.preventDefault()
-  //     if (!this.newLabel) return
-  //     this.stats.push({
-  //       label: this.newLabel,
-  //       value: 100
-  //     })
-  //     this.newLabel = ''
-  //   },
-  //   remove: function (stat) {
-  //     if (this.stats.length > 3) {
-  //       this.stats.splice(this.stats.indexOf(stat), 1)
-  //     } else {
-  //       alert('Can\'t delete more!')
-  //     }
-  //   }
-  // }
-});
+})
 </script>
 
 <style>
