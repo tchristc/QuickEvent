@@ -1,15 +1,17 @@
 <script src="scripts/vue/vue.min.js"></script>
-
 <script type="text/x-template" id="pipeline-template">
-  <svg width="100%" height="100%" ref="svgCanvas" >
-      <plugin v-for="data in stats" :data="data"></plugin>
+  <svg width="100%" height="100%" ref="svgCanvas" 
+      @mousedown="startDrag"
+      @mousemove="drag"
+      @mouseup="endDrag"
+      @mouseleave="endDrag">
+      <plugin v-for="data in stats" :data="data" ref="plugins"></plugin>
   </svg>
 </script> 
-
 <script type="text/x-template" id="plugin-template">
-  <g class="draggable" style="fill:transparent;stroke:black;stroke-width:1;">
-      <rect :x="data.x" :y="data.y" rx="5" ry="5" :width="data.w" :height="data.h"/>
-      <line :x1="data.x" :y1="data.x+10" :x2="data.x+data.w" :y2="data.x+10"></line>
+  <g :id="data.id" class="draggable" style="fill:transparent;stroke:black;stroke-width:1;">
+      <rect x="0" y="0" rx="5" ry="5" :width="data.w" :height="data.h"/>
+      <line x1="0" y1="10" :x2="data.w" y2="10"></line>
   </g>
 </script> 
 
@@ -20,25 +22,80 @@
 
 <script>
 var stats = [
-  { label: 'plugin a', x: 3, y: 3, w:100, h:50 },
-  { label: 'plugin b', x: 50, y:50, w:100, h:50 }
+  { id: '', x: 3, y: 3, w:100, h:50 },
+  { id: '', x: 50, y:50, w:100, h:50 }
 ];
 
 Vue.component('pipeline', {
-  props: ['stats'],
+  props: ['stats', 'selectedElement', 'selectedData', 'offset', 'transform', 'svg'],
   template: '#pipeline-template',
   created: function(){
     console.log('Created');
   },
   mounted: function(){
+    this.svg = this.$refs.svgCanvas;
+    //this.makeDraggable();
     console.log('Mounted');
-    console.log(this.$refs.svgCanvas);
+  },
+  destroyed: function(){
+    console.log('Destroyed');
+  },
+  methods: {
+    getMousePosition: function (evt) {
+      var CTM = this.svg.getScreenCTM();
+      return {
+        x: (evt.clientX - CTM.e) / CTM.a,
+        y: (evt.clientY - CTM.f) / CTM.d
+      };
+    },
+    startDrag: function (evt) {
+      if (evt.target.parentElement.classList.contains('draggable')) {
+        this.selectedElement = evt.target.parentElement;
+        for(var k in this.$refs.plugins)
+        {
+          if(this.$refs.plugins[k].$el === this.selectedElement)
+          {
+            this.selectedData = this.$refs.plugins[k];
+          }
+        }
+        
+        this.offset = this.getMousePosition(evt);
+
+        var transforms = this.selectedElement.transform.baseVal;
+        if (transforms.length === 0 || transforms.getItem(0).type !== SVGTransform.SVG_TRANSFORM_TRANSLATE) {
+          var translate = this.svg.createSVGTransform();
+          translate.setTranslate(0, 0);
+          this.selectedElement.transform.baseVal.insertItemBefore(translate, 0);
+        }
+
+        this.transform = transforms.getItem(0);
+        this.offset.x -= this.transform.matrix.e;
+        this.offset.y -= this.transform.matrix.f;
+        console.log('startDrag');
+      }
+    },
+    drag: function (evt) {
+      if (this.selectedElement) {
+        console.log('drag');
+        evt.preventDefault();
+        var coord = this.getMousePosition(evt);
+        this.transform.setTranslate(coord.x - this.offset.x, coord.y - this.offset.y);
+      }
+    },
+    endDrag: function (evt) {
+      this.selectedData = false;
+      this.selectedElement = false;
+    }
   }
 });
 
 Vue.component('plugin', {
   props: ['data'],
-  template: '#plugin-template'
+  template: '#plugin-template',
+  created: function(){
+  },
+  methods: {
+  }
 });
 
 var vm = new Vue({
@@ -55,6 +112,9 @@ var vm = new Vue({
     },
     remove: function (stat) {
       this.stats.splice(this.stats.indexOf(stat), 1)
+    },
+    childDrag: function(element, x, y){
+      alert('stuff');
     }
   }
 });
@@ -97,56 +157,3 @@ label {
   cursor: move;
 }
 </style>
-<script type="text/javascript">
-  function makeDraggable(evt) {
-    var svg = evt.target;
-    svg.addEventListener('mousedown', startDrag, false);
-    svg.addEventListener('mousemove', drag, false);
-    svg.addEventListener('mouseup', endDrag, false);
-    svg.addEventListener('mouseleave', endDrag);
-
-    function getMousePosition(evt) {
-      var CTM = svg.getScreenCTM();
-      return {
-        x: (evt.clientX - CTM.e) / CTM.a,
-        y: (evt.clientY - CTM.f) / CTM.d
-      };
-    }
-
-    var selectedElement, offset, transform;
-
-    function startDrag(evt) {
-      if (evt.target.classList.contains('draggable')) {
-        selectedElement = evt.target;
-        offset = getMousePosition(evt);
-
-        // Make sure the first transform on the element is a translate transform
-        var transforms = selectedElement.transform.baseVal;
-
-        if (transforms.length === 0 || transforms.getItem(0).type !== SVGTransform.SVG_TRANSFORM_TRANSLATE) {
-          // Create an transform that translates by (0, 0)
-          var translate = svg.createSVGTransform();
-          translate.setTranslate(0, 0);
-          selectedElement.transform.baseVal.insertItemBefore(translate, 0);
-        }
-
-        // Get initial translation
-        transform = transforms.getItem(0);
-        offset.x -= transform.matrix.e;
-        offset.y -= transform.matrix.f;
-      }
-    }
-
-    function drag(evt) {
-      if (selectedElement) {
-        evt.preventDefault();
-        var coord = getMousePosition(evt);
-        transform.setTranslate(coord.x - offset.x, coord.y - offset.y);
-      }
-    }
-
-    function endDrag(evt) {
-      selectedElement = false;
-    }
-  }
- </script>
