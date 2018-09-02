@@ -22,8 +22,8 @@
 
 <script>
 var stats = [
-  { id: '', x: 3, y: 3, w:100, h:50 },
-  { id: '', x: 50, y:50, w:100, h:50 }
+  { x: 3, y: 3, w:100, h:50 },
+  { x: 50, y:50, w:100, h:50 }
 ];
 
 Vue.component('pipeline', {
@@ -34,8 +34,11 @@ Vue.component('pipeline', {
   },
   mounted: function(){
     this.svg = this.$refs.svgCanvas;
-    //this.makeDraggable();
     console.log('Mounted');
+  },
+  updated: function(){
+    this.svg = this.$refs.svgCanvas;
+    console.log('Updated');
   },
   destroyed: function(){
     console.log('Destroyed');
@@ -105,16 +108,11 @@ var vm = new Vue({
   },
   methods: {
     add: function (e) {
-      e.preventDefault()
-      this.stats.push({
-        value: 100
-      });
+      e.preventDefault();
+      this.stats.push({ x: 3, y: 3, w:100, h:50 });
     },
     remove: function (stat) {
-      this.stats.splice(this.stats.indexOf(stat), 1)
-    },
-    childDrag: function(element, x, y){
-      alert('stuff');
+      this.stats.splice(this.stats.indexOf(stat), 1);
     }
   }
 });
