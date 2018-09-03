@@ -64,7 +64,7 @@
 
     .plugin .animated{
       animation: pulse 1s infinite;
-      transform-origin: center center;
+      /* transform-origin: center center; */
     }
 </style>
 <script type="text/x-template" id="pipeline-template">
@@ -118,16 +118,16 @@ Vue.component('plugin', {
 				move: "mousemove",
 				stop: "mouseup"
 			}
-			//const elem = evt.currentTarget.closest("svg")
+      
 			const elem = document.querySelector("#svgCanvas");
       const point = elem.createSVGPoint()
 			const transform = elem.getScreenCTM().inverse()
 			const getPos = touch ? getTouchPos : getMousePos
+      getPos(evt, point)
 
-      //var CTM = elem.getScreenCTM();
-      // var offset = {x: ((evt.clientX - CTM.e) / CTM.a), y: ((evt.clientY - CTM.f) / CTM.d)}
-      var offset = {x: this.plugin.x - evt.clientX, y: this.plugin.y - evt.clientY}
-      
+      var CTM = this.$el.getScreenCTM();
+      var offset = {x: (evt.clientX - CTM.e) , y: (evt.clientY - CTM.f)}
+
       var moving = true
 			var newPt 
 
@@ -135,11 +135,16 @@ Vue.component('plugin', {
         if (moving) requestAnimationFrame(updateFn)
 
 				newPt = point.matrixTransform(transform)
-				this.plugin.x = newPt.x + offset.x
-				this.plugin.y = newPt.y + offset.y
+				this.plugin.x = newPt.x
+				this.plugin.y = newPt.y
       }
       
-			const moveFn = (evt) => getPos(evt, point)
+			const moveFn = (evt) => {
+        getPos(evt, point)
+
+        point.x -= offset.x
+        point.y -= offset.y
+      }
 			const stopFn = (evt) => {
 				moving = false
 				elem.removeEventListener(events.move, moveFn)
