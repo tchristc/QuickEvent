@@ -73,11 +73,9 @@
 <script type="text/x-template" id="plugin-template">
   <g class="replace-with-plugin-or-animation">
     <g :id="plugin.id" class="draggable" style="fill:rgba(0,0,0,.25);stroke:black;stroke-width:.5;">
-
         <rect x="0" y="0" rx="5" ry="5" :width="plugin.w" :height="plugin.h"/>
         <line x1="0" y1="10" :x2="plugin.w" y2="10"></line>
         <text x="10" y="10">Component</text>
-      
     </g>
   </g>
 </script> 
@@ -93,23 +91,7 @@ var plugins = [
   { x: 50, y:50, w:100, h:50 }
 ];
 
-Vue.component('pipeline', {
-  props: ['plugins', 'selectedElement', 'selectedPlugin', 'offset', 'transform', 'svg'],
-  template: '#pipeline-template',
-  created: function(){
-    console.log('Created');
-  },
-  mounted: function(){
-    this.svg = this.$refs.svgCanvas;
-    console.log('Mounted');
-  },
-  updated: function(){
-    this.svg = this.$refs.svgCanvas;
-    console.log('Updated');
-  },
-  destroyed: function(){
-    console.log('Destroyed');
-  },
+var draggableMixins = {
   methods: {
     getMousePosition: function (evt) {
       var CTM = this.svg.getScreenCTM();
@@ -158,6 +140,26 @@ Vue.component('pipeline', {
       this.selectedElement = false;
     }
   }
+}
+
+Vue.component('pipeline', {
+  props: ['plugins', 'selectedElement', 'selectedPlugin', 'offset', 'transform', 'svg'],
+  template: '#pipeline-template',
+  created: function(){
+    console.log('Created');
+  },
+  mounted: function(){
+    this.svg = this.$refs.svgCanvas;
+    console.log('Mounted');
+  },
+  updated: function(){
+    this.svg = this.$refs.svgCanvas;
+    console.log('Updated');
+  },
+  destroyed: function(){
+    console.log('Destroyed');
+  },
+  mixins: [draggableMixins],
 });
 
 Vue.component('plugin', {
@@ -166,7 +168,8 @@ Vue.component('plugin', {
   created: function(){
   },
   methods: {
-  }
+  },
+  mixins: [draggableMixins],
 });
 
 var vm = new Vue({
@@ -182,6 +185,7 @@ var vm = new Vue({
     remove: function (stat) {
       this.plugins.splice(this.plugins.indexOf(stat), 1);
     }
-  }
+  },
+  mixins: [draggableMixins],
 });
 </script>
