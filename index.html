@@ -127,56 +127,59 @@ var plugins = [
 ];
 
 var draggableMixins = {
+  props: ['touch', 'events', 'moving', 'elem', 'transform'],
   methods: {
-  startMove(evt) {
-			const touch = (evt.type === "touchstart")
-			if (!touch && evt.button !== 0) return;
-			const events = touch ? {
-				move: "touchmove",
-				stop: "touchend"
-			} : {
-				move: "mousemove",
-				stop: "mouseup"
-			}
+    startMove(evt) {
+			this.touch = (evt.type === "touchstart");
+			if (!this.touch && evt.button !== 0) return;
+			this.events = this.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
       
-			const elem = document.querySelector("#svgCanvas");
-      const point = elem.createSVGPoint()
-			const transform = elem.getScreenCTM().inverse()
-			const getPos = touch ? getTouchPos : getMousePos
-      getPos(evt, point)
+			this.elem = document.querySelector("#svgCanvas");
+      this.point = this.elem.createSVGPoint()
+      
+      this.transform = this.elem.getScreenCTM().inverse()
+			
+      this.getPos(evt)
 
       var CTM = this.$el.getScreenCTM();
-      var offset = {x: (evt.clientX - CTM.e) , y: (evt.clientY - CTM.f)}
+      this.offset = {x: (evt.clientX - CTM.e) , y: (evt.clientY - CTM.f)}
 
-      var moving = true
-			var newPt 
-
-			const updateFn = () => {
-        if (moving) requestAnimationFrame(updateFn)
-
-				newPt = point.matrixTransform(transform)
-				this.data.x = newPt.x
-				this.data.y = newPt.y
-      }
+      this.moving = true
+			requestAnimationFrame(this.updateFn)
+      this.moveFn(evt)
       
-			const moveFn = (evt) => {
-        getPos(evt, point)
+			this.elem.addEventListener(this.events.move, this.moveFn)
+			this.elem.addEventListener(this.events.stop, this.stopFn)
+    },
+    updateFn: function() {
+      if (this.moving) requestAnimationFrame(this.updateFn)
 
-        point.x -= offset.x
-        point.y -= offset.y
-      }
-			const stopFn = (evt) => {
-				moving = false
-				elem.removeEventListener(events.move, moveFn)
-				elem.removeEventListener(events.stop, stopFn)
-			}
+      var newPt = this.point.matrixTransform(this.transform)
+      this.data.x = newPt.x
+      this.data.y = newPt.y
+    },
+    moveFn: function (evt){
+      this.getPos(evt)
 
-			requestAnimationFrame(updateFn)
-      moveFn(evt)
-      
-			elem.addEventListener(events.move, moveFn)
-			elem.addEventListener(events.stop, stopFn)
-		}
+      this.point.x -= this.offset.x
+      this.point.y -= this.offset.y
+    },
+    stopFn: function(evt) {
+      this.moving = false
+      this.elem.removeEventListener(this.events.move, this.moveFn)
+      this.elem.removeEventListener(this.events.stop, this.stopFn)
+    },
+    getPos: function (evt) {
+      return this.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
+    },
+    getMousePos: function (mouseEvent) {
+      this.point.x = (mouseEvent.clientX);
+      this.point.y = (mouseEvent.clientY);
+    },
+    getTouchPos: function (touchEvent) {
+      this.point.x = (touchEvent.touches[0].clientX);
+      this.point.y = (touchEvent.touches[0].clientY);
+    }
   }
 }
 
@@ -222,13 +225,4 @@ var vm = new Vue({
   mixins: [draggableMixins],
 });
 
-function getMousePos(mouseEvent, point) {
-	point.x = (mouseEvent.clientX)
-	point.y = (mouseEvent.clientY)
-}
-
-function getTouchPos(touchEvent, point) {
-	point.x = (touchEvent.touches[0].clientX)
-	point.y = (touchEvent.touches[0].clientY)
-}
 </script>
