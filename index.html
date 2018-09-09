@@ -108,10 +108,14 @@
 </script>
 
 <script type="text/x-template" id="plugin-connector-out-template">
-  <g>
-    <circle class="plugin-connector" :cx="data.x+data.w+(3+data.r)" :cy="data.y+16" :r="data.r" />
-    <line class="connector-line" :x1="data.x+data.w+(3+data.r)" :y1="data.y+16" :x2="pointer.x" :y2="pointer.y" ref="connector-line"> </line>
-  </g>
+  <svg
+    @mousedown.prevent="startMove" 
+    @touchstart.prevent="startMove">
+    <g>
+      <circle class="plugin-connector" :cx="data.x+data.w+(3+data.r)" :cy="data.y+16" :r="data.r" />
+      <line class="connector-line" :x1="data.x+data.w+(3+data.r)" :y1="data.y+16" :x2="pointer.x" :y2="pointer.y" ref="connector-line" :visibility="visibility()"> </line>
+    </g>
+  </svg>
 </script>
 
 <script type="text/x-template" id="plugin-connector-in-template">
@@ -260,12 +264,26 @@ Vue.component('plugin-connector-out', {
   },
   methods: {
     startMove(evt) {
+      this.touch = (evt.type === "touchstart");
+			if (!this.touch && evt.button !== 0) return;
+			this.events = this.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
+      
+      this.moving = true
+			requestAnimationFrame(this.updateFn)
+      this.moveFn(evt)
+      
+			this.elem.addEventListener(this.events.move, this.moveFn)
+			this.elem.addEventListener(this.events.stop, this.stopFn)
     },
     updateFn: function() {
     },
     moveFn: function (evt){
+
     },
     stopFn: function(evt) {
+      this.moving = false
+      this.elem.removeEventListener(this.events.move, this.moveFn)
+      this.elem.removeEventListener(this.events.stop, this.stopFn)
     },
     getPos: function (evt) {
       return this.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
@@ -277,6 +295,9 @@ Vue.component('plugin-connector-out', {
     getTouchPos: function (touchEvent) {
       this.point.x = (touchEvent.touches[0].clientX);
       this.point.y = (touchEvent.touches[0].clientY);
+    },
+    visibility: function(){
+      return this.moving ? 'visible' : 'hidden';
     }
   }
 });
