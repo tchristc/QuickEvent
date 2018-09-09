@@ -80,19 +80,19 @@
 <script type="text/x-template" id="pipeline-template">
   <svg width="100%" height="100%" id="svgCanvas" 
     @mousemove="movePointer">
-      <plugin v-for="plugin in plugins" :data="plugin" :pointer="pointer" ref="plugins" ></plugin>
+      <plugin v-for="plugin in appData.plugins" :data="plugin" :pointer="pointer" ref="plugins" ></plugin>
   </svg>
 </script> 
 
 <script type="text/x-template" id="plugin-template">
   <g>
-    <plugin-handle :data="data" ref="plugin-handles" ></plugin-handle>
+    <plugin-processor :data="data" ref="plugin-processors" ></plugin-processor>
     <plugin-connector-in :data="data" ref="plugin-connectors-ins" ></plugin-connector-in>
     <plugin-connector-out :data="data" :pointer="pointer" ref="plugin-connector-outs" ></plugin-connector-out>
   </g>
 </script>
 
-<script type="text/x-template" id="plugin-handle-template">
+<script type="text/x-template" id="plugin-processor-template">
   <svg class="plugin" v-bind="pluginPos"
     @mousedown.prevent="startMove" 
     @touchstart.prevent="startMove">
@@ -110,7 +110,7 @@
 <script type="text/x-template" id="plugin-connector-out-template">
   <g>
     <circle class="plugin-connector" :cx="data.x+data.w+(3+data.r)" :cy="data.y+16" :r="data.r" />
-    <line class="connector-line" :x1="data.x+data.w+(3+data.r)" :y1="data.y+16" :x2="pointer.x" :y2="pointer.y"> </line>
+    <line class="connector-line" :x1="data.x+data.w+(3+data.r)" :y1="data.y+16" :x2="pointer.x" :y2="pointer.y" ref="connector-line"> </line>
   </g>
 </script>
 
@@ -120,14 +120,16 @@
 
 <div id="app">
   <button @click="add">add</button>
-  <pipeline :plugins="plugins"></pipeline>
+  <pipeline :appData="appData"></pipeline>
 </div>
 
 <script>
-var plugins = [
-  { x: 3, y: 3 },
-  { x: 50, y:50 }
-];
+  var appData = {
+      plugins: [
+      { x: 3, y: 3 },
+      { x: 50, y:50 }
+    ]
+  };
 
 var draggableMixins = {
   props: ['touch', 'events', 'moving', 'elem', 'transform'],
@@ -212,25 +214,15 @@ Vue.component('plugin', {
   created: function(){
   },
   updated: function(){
-      // console.log(document.querySelector("circle").cx.baseVal.value + this.data.x)
   },
   methods: {
-    
-  },
-  computed: {
-    pluginPos: function(){
-      return {
-        x: this.data.x,
-        y: this.data.y
-      }
-    }
   },
   mixins: [draggableMixins],
 });
 
-Vue.component('plugin-handle', {
+Vue.component('plugin-processor', {
   props: ['data'],
-  template: '#plugin-handle-template',
+  template: '#plugin-processor-template',
   created: function(){
     this.data.w = 100;
     this.data.h = 30;
@@ -239,7 +231,6 @@ Vue.component('plugin-handle', {
   updated: function(){
   },
   methods: {
-    
   },
   computed: {
     pluginPos: function(){
@@ -293,15 +284,15 @@ Vue.component('plugin-connector-out', {
 var vm = new Vue({
   el: '#app',
   data: {
-    plugins: plugins
+    appData: appData
   },
   methods: {
     add: function (e) {
       e.preventDefault();
-      this.plugins.push({ x: 3, y: 3, w:100, h:50 });
+      this.appData.plugins.push({ x: 3, y: 3, w:100, h:50 });
     },
     remove: function (stat) {
-      this.plugins.splice(this.plugins.indexOf(stat), 1);
+      this.appData.plugins.splice(this.plugins.indexOf(stat), 1);
     }
   },
   mixins: [draggableMixins],
