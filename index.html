@@ -31,7 +31,11 @@
         top: 0;
         left: 300px;
     }
-    
+
+    #svgCanvas{
+      background-color:#999;
+    }    
+
     .draggable {
       cursor: move;
     }
@@ -57,7 +61,7 @@
     }
 
     .plugin {
-      fill:rgba(0,0,0,.25);
+      fill:rgba(255,255,255,.25);
       stroke:black;
       stroke-width:.5;
     }
@@ -72,7 +76,12 @@
       fill:lightgreen;
       stroke:black;
       stroke-width:.5;
-      transition: all 1s ease-in-out;
+    }
+
+    .connector-line {
+      fill:lightgreen;
+      stroke:black;
+      stroke-width:.5; 
     }
 
     @keyframes circle-zoom-in {
@@ -93,27 +102,46 @@
       animation: circle-zoom-in .5s forwards;
     }
 </style>
+
 <script type="text/x-template" id="pipeline-template">
   <svg width="100%" height="100%" id="svgCanvas" >
       <plugin v-for="plugin in plugins" :data="plugin" ref="plugins" ></plugin>
   </svg>
 </script> 
+
 <script type="text/x-template" id="plugin-template">
+  <g>
+    <plugin-handle :data="data" ref="plugin-handles" ></plugin-handle>
+    <plugin-connector-in :data="data" ref="plugin-connectors-ins" ></plugin-connector-in>
+    <plugin-connector-out :data="data" ref="plugin-connector-outs" ></plugin-connector-out>
+  </g>
+</script>
+
+<script type="text/x-template" id="plugin-handle-template">
   <svg class="plugin" v-bind="pluginPos"
     @mousedown.prevent="startMove" 
     @touchstart.prevent="startMove">
     <g>
-        <rect x="7" y="1" rx="5" ry="5" :width="data.w" :height="data.h"/>
-        <line x1="7" y1="10" :x2="data.w+7" y2="10"></line>
-        <line x1="7" y1="20" :x2="data.w+7" y2="20"></line>
+        <rect x="1" y="1" rx="5" ry="5" :width="data.w" :height="data.h"/>
+        <line x1="0" y1="10" :x2="data.w+1" y2="10"></line>
+        <line x1="0" y1="20" :x2="data.w+1" y2="20"></line>
         <text x="30" y="10">Component</text>
-        <text x="10" y="20">Input</text>
-        <text x="75" y="20">Output</text>
-        <circle class="plugin-connector" cx="3" cy="16" r="2" />
-        <circle class="plugin-connector" :cx="data.w+11" cy="16" r="2" />    
+        <text x="2" y="20">Input</text>
+        <text x="69" y="20">Output</text>
     </g>
   </svg>
-</script> 
+</script>
+
+<script type="text/x-template" id="plugin-connector-out-template">
+  <g>
+    <circle class="plugin-connector" :cx="data.x+data.w+(3+data.r)" :cy="data.y+16" :r="data.r" />
+    <line class="connector-line" :x1="data.x+data.w+(3+data.r)" :y1="data.y+16" :x2="0" :y2="point.y"> </line>
+  </g>
+</script>
+
+<script type="text/x-template" id="plugin-connector-in-template">
+  <circle class="plugin-connector" :cx="data.x-(1+data.r)" :cy="data.y+16" :r="data.r" />
+</script>
 
 <div id="app">
   <button @click="add">add</button>
@@ -122,8 +150,8 @@
 
 <script>
 var plugins = [
-  { x: 3, y: 3, w:100, h:30 },
-  { x: 50, y:50, w:100, h:30 }
+  { x: 3, y: 3 },
+  { x: 50, y:50 }
 ];
 
 var draggableMixins = {
@@ -194,6 +222,10 @@ Vue.component('plugin', {
   template: '#plugin-template',
   created: function(){
   },
+  updated: function(){
+    
+      // console.log(document.querySelector("circle").cx.baseVal.value + this.data.x)
+  },
   methods: {
     
   },
@@ -206,6 +238,98 @@ Vue.component('plugin', {
     }
   },
   mixins: [draggableMixins],
+});
+
+Vue.component('plugin-handle', {
+  props: ['data'],
+  template: '#plugin-handle-template',
+  created: function(){
+    this.data.w = 100;
+    this.data.h = 30;
+    this.data.r = 2;
+  },
+  updated: function(){
+  },
+  methods: {
+    
+  },
+  computed: {
+    pluginPos: function(){
+      return {
+        x: this.data.x,
+        y: this.data.y
+      }
+    }
+  },
+  mixins: [draggableMixins],
+});
+
+Vue.component('plugin-connector-in', {
+  props: ['data'],
+  template: '#plugin-connector-in-template'
+});
+
+Vue.component('plugin-connector-out', {
+  props: ['data', 
+      'touch', 'events', 'moving', 'elem', 'transform', 'point'],
+  template: '#plugin-connector-out-template',
+  created: function(){
+
+  },
+  mounted: function(){
+    this.elem = document.querySelector("#svgCanvas");
+    this.point = this.elem.createSVGPoint();
+  },
+  methods: {
+    startMove(evt) {
+			this.touch = (evt.type === "touchstart");
+			if (!this.touch && evt.button !== 0) return;
+			this.events = this.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
+      
+			this.elem = document.querySelector("#svgCanvas");
+      this.point = this.elem.createSVGPoint();
+      
+      this.transform = this.elem.getScreenCTM().inverse()
+			
+      this.getPos(evt)
+
+      var CTM = this.$el.getScreenCTM();
+      this.offset = {x: (evt.clientX - CTM.e) , y: (evt.clientY - CTM.f)}
+
+      this.moving = true
+			requestAnimationFrame(this.updateFn)
+      this.moveFn(evt)
+      
+			this.elem.addEventListener(this.events.move, this.moveFn)
+			this.elem.addEventListener(this.events.stop, this.stopFn)
+    },
+    updateFn: function() {
+      if (this.moving) requestAnimationFrame(this.updateFn)
+
+      var newPt = this.point.matrixTransform(this.transform)
+      this.data.x = newPt.x
+      this.data.y = newPt.y
+    },
+    moveFn: function (evt){
+      this.getPos(evt)
+    },
+    stopFn: function(evt) {
+      this.moving = false
+      this.elem.removeEventListener(this.events.move, this.moveFn)
+      this.elem.removeEventListener(this.events.stop, this.stopFn)
+    },
+    getPos: function (evt) {
+      return this.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
+    },
+    getMousePos: function (mouseEvent) {
+      this.point.x = (mouseEvent.clientX);
+      this.point.y = (mouseEvent.clientY);
+    },
+    getTouchPos: function (touchEvent) {
+      this.point.x = (touchEvent.touches[0].clientX);
+      this.point.y = (touchEvent.touches[0].clientY);
+    }
+  }
 });
 
 var vm = new Vue({
@@ -224,5 +348,4 @@ var vm = new Vue({
   },
   mixins: [draggableMixins],
 });
-
 </script>
