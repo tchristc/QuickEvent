@@ -60,11 +60,11 @@
 
     @keyframes circle-zoom-in {
       from {
-        r: 2;
+        r: 3;
       }
 
       to {
-        r: 4;
+        r: 5;
       }
     }
 
@@ -77,164 +77,189 @@
     }
 </style>
 
-<script type="text/x-template" id="pipeline-template">
-  <svg width="100%" height="100%" id="svgCanvas" 
-    @mousemove="movePointer">
-      <plugin v-for="plugin in appData.plugins" :data="plugin" :pointer="pointer" ref="plugins" ></plugin>
-  </svg>
-</script> 
+<div id="app">
+    <button @click="add">add</button>
+    <svg width="100%" height="100%" id="svgCanvas" @mousemove="movePointer">
+        <plugin v-for="plugin in appData.plugins" :data="plugin" ></plugin>
+        <!-- <g v-for="(connection, i) in appData.connections">
+        <line x1="1" :y1="(i+1)*10+10" :x2="data.w+1" :y2="(i+1)*10+10"></line>
+        </g> -->
+    </svg>
+</div>
+
 
 <script type="text/x-template" id="plugin-template">
-  <g>
-    <plugin-processor :data="data" ref="plugin-processors" ></plugin-processor>
-    <plugin-connector-in :data="data" ref="plugin-connectors-ins" ></plugin-connector-in>
-    <plugin-connector-out :data="data" :pointer="pointer" ref="plugin-connector-outs" ></plugin-connector-out>
-  </g>
-</script>
-
-<script type="text/x-template" id="plugin-processor-template">
   <svg class="plugin" v-bind="pluginPos"
     @mousedown.prevent="startMove" 
     @touchstart.prevent="startMove">
     <g>
         <rect x="1" y="1" rx="5" ry="5" :width="data.w" :height="data.h"/>
         <line x1="1" y1="10" :x2="data.w+1" y2="10"></line>
-        <line x1="1" y1="20" :x2="data.w+1" y2="20"></line>
         <text x="30" y="10">Component</text>
-        <text x="2" y="20">Input</text>
-        <text x="69" y="20">Output</text>
+        <g v-for="(processor, i) in data.ports">
+          <line x1="1" :y1="(i+1)*10+10" :x2="data.w+1" :y2="(i+1)*10+10"></line>
+          <text x="2" :y="(i+1)*10+10">Input {{(i+1)}}</text>
+          <text x="62" :y="(i+1)*10+10">Output {{(i+1)}}</text>
+          <circle class="plugin-connector" :cx="0" :cy="16" :r="data.r" />
+          <circle class="plugin-connector" :cx="data.w+(3+data.r)" :cy="16" :r="data.r" />
+          <!-- <line class="connector-line" :x1="data.x+data.w+(3+data.r)" :y1="data.y+16" :x2="pointer.x" :y2="pointer.y" ref="connector-line" :visibility="visibility()"> </line> -->
+        </g>
     </g>
   </svg>
 </script>
-
-<script type="text/x-template" id="plugin-connector-out-template">
-  <svg
-    @mousedown.prevent="startMove" 
-    @touchstart.prevent="startMove">
-    <g>
-      <circle class="plugin-connector" :cx="data.x+data.w+(3+data.r)" :cy="data.y+16" :r="data.r" />
-      <line class="connector-line" :x1="data.x+data.w+(3+data.r)" :y1="data.y+16" :x2="pointer.x" :y2="pointer.y" ref="connector-line" :visibility="visibility()"> </line>
-    </g>
-  </svg>
-</script>
-
-<script type="text/x-template" id="plugin-connector-in-template">
-  <circle class="plugin-connector" :cx="data.x-(1+data.r)" :cy="data.y+16" :r="data.r" />
-</script>
-
-<div id="app">
-  <button @click="add">add</button>
-  <pipeline :appData="appData"></pipeline>
-</div>
 
 <script>
   var appData = {
-      plugins: [
-      { x: 3, y: 3 },
-      { x: 50, y:50 }
-    ]
+    plugins: [
+      { id:1, x: 3, y: 3,  ports: [{id:1, in:true, out:true}]},
+      { id:2, x: 50, y:50, ports: [{id:1, in:true, out:true},{id:2, in:true, out:false}]}
+    ],
+    connections: [],
+    moving: false,
+    touch: false,
+    events: {},
+    elem: {},
+    transform: {},
+    point: {x:0,y:0},
+    pointer: {x:0,y:0}
   };
-
-var draggableMixins = {
-  props: ['touch', 'events', 'moving', 'elem', 'transform'],
-  methods: {
-    startMove(evt) {
-			this.touch = (evt.type === "touchstart");
-			if (!this.touch && evt.button !== 0) return;
-			this.events = this.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
-      
-			this.elem = document.querySelector("#svgCanvas");
-      this.point = this.elem.createSVGPoint()
-      
-      this.transform = this.elem.getScreenCTM().inverse()
-			
-      this.getPos(evt)
-
-      var CTM = this.$el.getScreenCTM();
-      this.offset = {x: (evt.clientX - CTM.e) , y: (evt.clientY - CTM.f)}
-
-      this.moving = true
-			requestAnimationFrame(this.updateFn)
-      this.moveFn(evt)
-      
-			this.elem.addEventListener(this.events.move, this.moveFn)
-			this.elem.addEventListener(this.events.stop, this.stopFn)
-    },
-    updateFn: function() {
-      if (this.moving) requestAnimationFrame(this.updateFn)
-
-      var newPt = this.point.matrixTransform(this.transform)
-      this.data.x = newPt.x
-      this.data.y = newPt.y
-    },
-    moveFn: function (evt){
-      this.getPos(evt)
-
-      this.point.x -= this.offset.x
-      this.point.y -= this.offset.y
-    },
-    stopFn: function(evt) {
-      this.moving = false
-      this.elem.removeEventListener(this.events.move, this.moveFn)
-      this.elem.removeEventListener(this.events.stop, this.stopFn)
-    },
-    getPos: function (evt) {
-      return this.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
-    },
-    getMousePos: function (mouseEvent) {
-      this.point.x = (mouseEvent.clientX);
-      this.point.y = (mouseEvent.clientY);
-    },
-    getTouchPos: function (touchEvent) {
-      this.point.x = (touchEvent.touches[0].clientX);
-      this.point.y = (touchEvent.touches[0].clientY);
-    }
-  }
-}
+  
+//appData.connections.push({out:appData.plugins[0].ports[0], in:appData.plugins[1].ports[0]});
 
 Vue.component('pipeline', {
-  props: ['plugins', 'point', 'pointer'],
+  props: ['appData', 'appData.elem'],
   template: '#pipeline-template',
   created: function(){
-    
-    this.point = {x:0,y:0};
-    this.pointer = {x:0,y:0};
+    console.log(this.appData);
   },
   mounted: function(){
+    this.appData.elem = document.querySelector("#svgCanvas");
+    this.appData.point = this.appData.elem.createSVGPoint();
   },
   methods:{
     movePointer: function(evt){
       this.getPos(evt);
-      this.pointer.x = evt.clientX-8;
-      this.pointer.y = evt.clientY-30
+      this.appData.pointer.x = evt.clientX-8;
+      this.appData.pointer.y = evt.clientY-30
+    },
+    getPos: function (evt) {
+      return this.appData.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
+    },
+    getMousePos: function (mouseEvent) {
+      this.appData.point.x = (mouseEvent.clientX);
+      this.appData.point.y = (mouseEvent.clientY);
+    },
+    getTouchPos: function (touchEvent) {
+      this.appData.point.x = (touchEvent.touches[0].clientX);
+      this.appData.point.y = (touchEvent.touches[0].clientY);
     }
-  },
-  mixins: [draggableMixins],
+  }
 });
 
 Vue.component('plugin', {
-  props: ['data', 'pointer'],
+  props: ['data'],
   template: '#plugin-template',
   created: function(){
-  },
-  updated: function(){
-  },
-  methods: {
-  },
-  mixins: [draggableMixins],
-});
-
-Vue.component('plugin-processor', {
-  props: ['data'],
-  template: '#plugin-processor-template',
-  created: function(){
     this.data.w = 100;
-    this.data.h = 30;
-    this.data.r = 2;
+    this.data.h = 20+(this.data.ports.length*10);
+    this.data.r = 3;
+  },
+  mounted: function(){
   },
   updated: function(){
   },
   methods: {
+    startMove(evt) {
+      if(evt.target.classList.contains("plugin-connector"))return;
+
+			appData.touch = (evt.type === "touchstart");
+			if (!appData.touch && evt.button !== 0) return;
+			appData.events = appData.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
+      
+
+      appData.transform = appData.elem.getScreenCTM().inverse()
+			
+      this.getPos(evt)
+
+      var CTM = this.$el.getScreenCTM();
+      appData.offset = {x: (evt.clientX - CTM.e) , y: (evt.clientY - CTM.f)}
+
+      appData.moving = true
+			requestAnimationFrame(this.updateFn)
+      this.moveFn(evt)
+      
+			appData.elem.addEventListener(appData.events.move, this.moveFn)
+			appData.elem.addEventListener(appData.events.stop, this.stopFn)
+    },
+    updateFn: function() {
+      if(!appData.moving)return;
+
+      requestAnimationFrame(this.updateFn)
+      
+      var newPt = appData.point.matrixTransform(appData.transform)
+      this.data.x = newPt.x
+      this.data.y = newPt.y
+    },
+    moveFn: function (evt){
+      if(!appData.moving)return;
+      
+      this.getPos(evt)
+
+      appData.point.x -= appData.offset.x
+      appData.point.y -= appData.offset.y
+    },
+    stopFn: function(evt) {
+      appData.moving = false
+      appData.elem.removeEventListener(appData.events.move, this.moveFn)
+      appData.elem.removeEventListener(appData.events.stop, this.stopFn)
+    },
+    getPos: function (evt) {
+      return appData.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
+    },
+    getMousePos: function (mouseEvent) {
+      appData.point.x = (mouseEvent.clientX);
+      appData.point.y = (mouseEvent.clientY);
+    },
+    getTouchPos: function (touchEvent) {
+      appData.point.x = (touchEvent.touches[0].clientX);
+      appData.point.y = (touchEvent.touches[0].clientY);
+    }
+    //CONNECTOR
+// startMove(evt) {
+//   this.appData.touch = (evt.type === "touchstart");
+// 	if (!this.appData.touch && evt.button !== 0) return;
+// 	this.appData.events = this.appData.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
+  
+//   this.appData.moving = true
+// 	requestAnimationFrame(this.updateFn)
+//   this.moveFn(evt)
+  
+// 	this.appData.elem.addEventListener(this.appData.events.move, this.moveFn)
+// 	this.appData.elem.addEventListener(this.appData.events.stop, this.stopFn)
+// },
+// updateFn: function() {
+// },
+// moveFn: function (evt){
+// },
+// stopFn: function(evt) {
+//   this.appData.moving = false
+//   this.appData.elem.removeEventListener(this.appData.events.move, this.moveFn)
+//   this.appData.elem.removeEventListener(this.appData.events.stop, this.stopFn)
+// },
+// getPos: function (evt) {
+//   return this.appData.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
+// },
+// getMousePos: function (mouseEvent) {
+//   this.appData.point.x = (mouseEvent.clientX);
+//   this.appData.point.y = (mouseEvent.clientY);
+// },
+// getTouchPos: function (touchEvent) {
+//   this.appData.point.x = (touchEvent.touches[0].clientX);
+//   this.appData.point.y = (touchEvent.touches[0].clientY);
+// },
+// visibility: function(){
+//   return this.appData.moving ? 'visible' : 'hidden';
+// }
   },
   computed: {
     pluginPos: function(){
@@ -243,69 +268,20 @@ Vue.component('plugin-processor', {
         y: this.data.y
       }
     }
-  },
-  mixins: [draggableMixins],
-});
-
-Vue.component('plugin-connector-in', {
-  props: ['data'],
-  template: '#plugin-connector-in-template'
-});
-
-Vue.component('plugin-connector-out', {
-  props: ['data', 'pointer',
-      'touch', 'events', 'moving', 'elem', 'transform', 'point'],
-  template: '#plugin-connector-out-template',
-  created: function(){
-  },
-  mounted: function(){
-    this.elem = document.querySelector("#svgCanvas");
-    this.point = this.elem.createSVGPoint();
-  },
-  methods: {
-    startMove(evt) {
-      this.touch = (evt.type === "touchstart");
-			if (!this.touch && evt.button !== 0) return;
-			this.events = this.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
-      
-      this.moving = true
-			requestAnimationFrame(this.updateFn)
-      this.moveFn(evt)
-      
-			this.elem.addEventListener(this.events.move, this.moveFn)
-			this.elem.addEventListener(this.events.stop, this.stopFn)
-    },
-    updateFn: function() {
-    },
-    moveFn: function (evt){
-
-    },
-    stopFn: function(evt) {
-      this.moving = false
-      this.elem.removeEventListener(this.events.move, this.moveFn)
-      this.elem.removeEventListener(this.events.stop, this.stopFn)
-    },
-    getPos: function (evt) {
-      return this.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
-    },
-    getMousePos: function (mouseEvent) {
-      this.point.x = (mouseEvent.clientX);
-      this.point.y = (mouseEvent.clientY);
-    },
-    getTouchPos: function (touchEvent) {
-      this.point.x = (touchEvent.touches[0].clientX);
-      this.point.y = (touchEvent.touches[0].clientY);
-    },
-    visibility: function(){
-      return this.moving ? 'visible' : 'hidden';
-    }
   }
 });
 
 var vm = new Vue({
   el: '#app',
-  data: {
-    appData: appData
+  data:{
+    appData:appData
+  },
+  created: function(){
+    console.log(appData);
+  },
+  mounted: function(){
+    this.appData.elem = document.querySelector("#svgCanvas");
+    this.appData.point = this.appData.elem.createSVGPoint();
   },
   methods: {
     add: function (e) {
@@ -313,9 +289,24 @@ var vm = new Vue({
       this.appData.plugins.push({ x: 3, y: 3, w:100, h:50 });
     },
     remove: function (stat) {
-      this.appData.plugins.splice(this.plugins.indexOf(stat), 1);
+      this.appData.plugins.splice(this.appData.plugins.indexOf(stat), 1);
+    },
+    movePointer: function(evt){
+      this.getPos(evt);
+      this.appData.pointer.x = evt.clientX-8;
+      this.appData.pointer.y = evt.clientY-30
+    },
+    getPos: function (evt) {
+      return this.appData.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
+    },
+    getMousePos: function (mouseEvent) {
+      this.appData.point.x = (mouseEvent.clientX);
+      this.appData.point.y = (mouseEvent.clientY);
+    },
+    getTouchPos: function (touchEvent) {
+      this.appData.point.x = (touchEvent.touches[0].clientX);
+      this.appData.point.y = (touchEvent.touches[0].clientY);
     }
-  },
-  mixins: [draggableMixins],
+  }
 });
 </script>
