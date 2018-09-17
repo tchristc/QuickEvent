@@ -95,10 +95,14 @@
 <div id="app">
     <button @click="add">add</button>
     <svg width="100%" height="100%" id="svgCanvas" @mousemove="movePointer">
-        <plugin v-for="plugin in appData.plugins" :data="plugin" ></plugin>
-        <!-- <g v-for="(connection, i) in appData.connections">
-        <line x1="1" :y1="(i+1)*10+10" :x2="data.w+1" :y2="(i+1)*10+10"></line>
-        </g> -->
+        <plugin v-for="plugin in appData.plugins" :data="plugin"></plugin>
+        <g v-for="(c, i) in appData.connections">
+          <line class="connector-line" 
+            :x1="c.out.plugin.x+c.out.plugin.w+(appData.re)*2+7" 
+            :y1="c.out.plugin.y+(10*(c.out.port.order))+6" 
+            :x2="c.in.plugin.x+(appData.re)" 
+            :y2="c.in.plugin.y+(10*(c.in.port.order))+6"></line>
+        </g>
     </svg>
 </div>
 
@@ -126,8 +130,8 @@
 <script>
   var appData = {
     plugins: [
-      { id:1, x: 3, y: 3,  ports: [{id:1, in:true, out:true, selected: false}]},
-      { id:2, x: 50, y:50, ports: [{id:1, in:true, out:true, selected: false},{id:2, in:true, out:false, selected: false}]}
+      { id:1, x: 3, y: 3, w:100, h:50, ports: [{id:1, order:1, in:true, out:true, selected: false,elem:null}]},
+      { id:2, x: 50, y:50, w:100, h:50, ports: [{id:1, order:1, in:true, out:true, selected: false,elem:null},{id:2, order:2, in:true, out:false, selected: false,elem:null}]}
     ],
     connections: [],
     selected: null,
@@ -139,10 +143,16 @@
     point: {x:0,y:0},
     pointer: {x:0,y:0},
     rs: 3,
-    re: 5,
+    re: 5
   };
   
-//appData.connections.push({out:appData.plugins[0].ports[0], in:appData.plugins[1].ports[0]});
+appData.connections.push({
+  out:{plugin:appData.plugins[0],  port:appData.plugins[0].ports[0]},
+  in:{plugin:appData.plugins[1], port:appData.plugins[1].ports[0]}});
+
+appData.connections.push({
+  out:{plugin:appData.plugins[0],  port:appData.plugins[0].ports[0]},
+  in:{plugin:appData.plugins[1], port:appData.plugins[1].ports[1]}});
 
 Vue.component('pipeline', {
   props: ['appData', 'appData.elem'],
@@ -311,7 +321,7 @@ var vm = new Vue({
   methods: {
     add: function (e) {
       e.preventDefault();
-      this.appData.plugins.push({ x: 3, y: 3, w:100, h:50 });
+      this.appData.plugins.push({ x: 3, y: 3 });
     },
     remove: function (stat) {
       this.appData.plugins.splice(this.appData.plugins.indexOf(stat), 1);
