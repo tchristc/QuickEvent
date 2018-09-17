@@ -85,6 +85,11 @@
       cursor:pointer;
       animation: circle-zoom-in .25s forwards;
     }
+
+    .plugin-connector-in {
+    }
+    .plugin-connector-out {
+    }
 </style>
 
 <div id="app">
@@ -110,9 +115,9 @@
           <line :x1="xs" :y1="(i+1)*10+10" :x2="xe" :y2="(i+1)*10+10"></line>
           <text :x="xs+1" :y="(i+1)*10+10">Input {{(i+1)}}</text>
           <text :x="70" :y="(i+1)*10+10">Output {{(i+1)}}</text>
-          <circle class="plugin-connector" :cx="appData.re" :cy="16" :r="appData.rs" />
-          <circle class="plugin-connector" :cx="xs+data.w+appData.re+1" :cy="16" :r="appData.rs" />
-          <!-- <line class="connector-line" :x1="data.x+data.w+(3+data.r)" :y1="data.y+16" :x2="pointer.x" :y2="pointer.y" ref="connector-line" :visibility="visibility()"> </line> -->
+          <circle class="plugin-connector plugin-connector-in" :cx="appData.re" :cy="10*(i+1)+6" :r="appData.rs" />
+          <circle class="plugin-connector plugin-connector-out" :cx="xs+data.w+appData.re+1" :cy="10*(i+1)+6" :r="appData.rs" />
+          <!-- <line class="connector-line" :x1="xs+data.w+appData.re+1" :y1="10*(i+1)+6" :x2="appData.pointer.x" :y2="appData.pointer.y" ref="connector-line" :visibility="visibility()"> </line> -->
         </g>
     </g>
   </svg>
@@ -121,10 +126,11 @@
 <script>
   var appData = {
     plugins: [
-      { id:1, x: 3, y: 3,  ports: [{id:1, in:true, out:true}]},
-      { id:2, x: 50, y:50, ports: [{id:1, in:true, out:true},{id:2, in:true, out:false}]}
+      { id:1, x: 3, y: 3,  ports: [{id:1, in:true, out:true, selected: false}]},
+      { id:2, x: 50, y:50, ports: [{id:1, in:true, out:true, selected: false},{id:2, in:true, out:false, selected: false}]}
     ],
     connections: [],
+    selected: null,
     moving: false,
     touch: false,
     events: {},
@@ -181,8 +187,33 @@ Vue.component('plugin', {
   },
   methods: {
     startMove(evt) {
-      if(evt.target.classList.contains("plugin-connector"))return;
-
+      var x = this.data.x;
+      if(evt.target.classList.contains("plugin-connector-in"))
+        return;
+      else if(evt.target.classList.contains("plugin-connector-out"))
+      {
+        appData.selected = "plugin-connector-out";
+        this.startMoveConnector(evt);
+      }
+      else{
+        appData.selected = "plugin";
+        this.startMovePlugin(evt);
+      }
+    },
+//MOUSE
+    getPos: function (evt) {
+      return appData.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
+    },
+    getMousePos: function (mouseEvent) {
+      appData.point.x = (mouseEvent.clientX);
+      appData.point.y = (mouseEvent.clientY);
+    },
+    getTouchPos: function (touchEvent) {
+      appData.point.x = (touchEvent.touches[0].clientX);
+      appData.point.y = (touchEvent.touches[0].clientY);
+    },
+//PLUGIN
+    startMovePlugin(evt) {
 			appData.touch = (evt.type === "touchstart");
 			if (!appData.touch && evt.button !== 0) return;
 			appData.events = appData.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
@@ -196,22 +227,22 @@ Vue.component('plugin', {
       appData.offset = {x: (evt.clientX - CTM.e) , y: (evt.clientY - CTM.f)}
 
       appData.moving = true
-			requestAnimationFrame(this.updateFn)
-      this.moveFn(evt)
+			requestAnimationFrame(this.updatePlugin)
+      this.movePlugin(evt)
       
-			appData.elem.addEventListener(appData.events.move, this.moveFn)
-			appData.elem.addEventListener(appData.events.stop, this.stopFn)
+			appData.elem.addEventListener(appData.events.move, this.movePlugin)
+			appData.elem.addEventListener(appData.events.stop, this.stopPlugin)
     },
-    updateFn: function() {
+    updatePlugin: function() {
       if(!appData.moving)return;
 
-      requestAnimationFrame(this.updateFn)
+      requestAnimationFrame(this.updatePlugin)
       
       var newPt = appData.point.matrixTransform(appData.transform)
       this.data.x = newPt.x
       this.data.y = newPt.y
     },
-    moveFn: function (evt){
+    movePlugin: function (evt){
       if(!appData.moving)return;
       
       this.getPos(evt)
@@ -219,58 +250,38 @@ Vue.component('plugin', {
       appData.point.x -= appData.offset.x
       appData.point.y -= appData.offset.y
     },
-    stopFn: function(evt) {
-      appData.moving = false
-      appData.elem.removeEventListener(appData.events.move, this.moveFn)
-      appData.elem.removeEventListener(appData.events.stop, this.stopFn)
+    stopPlugin: function(evt) {
+      appData.moving = false;
+      appData.selected = null;
+      appData.elem.removeEventListener(appData.events.move, this.movePlugin)
+      appData.elem.removeEventListener(appData.events.stop, this.stopPlugin)
     },
-    getPos: function (evt) {
-      return appData.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
+//CONNECTOR
+    startMoveConnector(evt) {
+      appData.touch = (evt.type === "touchstart");
+      if (!appData.touch && evt.button !== 0) return;
+      appData.events = appData.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
+      
+      appData.moving = true
+      requestAnimationFrame(this.updateConnector)
+      this.moveConnector(evt)
+      
+      appData.elem.addEventListener(appData.events.move, this.moveConnector)
+      appData.elem.addEventListener(appData.events.stop, this.stopConnector)
     },
-    getMousePos: function (mouseEvent) {
-      appData.point.x = (mouseEvent.clientX);
-      appData.point.y = (mouseEvent.clientY);
+    updateConnector: function() {
     },
-    getTouchPos: function (touchEvent) {
-      appData.point.x = (touchEvent.touches[0].clientX);
-      appData.point.y = (touchEvent.touches[0].clientY);
+    moveConnector: function (evt){
+    },
+    stopConnector: function(evt) {
+      appData.moving = false;
+      appData.selected = null;
+      appData.elem.removeEventListener(appData.events.move, this.moveConnector)
+      appData.elem.removeEventListener(appData.events.stop, this.stopConnector)
+    },
+    visibility: function(){
+      return appData.moving && appData.selected === "plugin-connector-out" ? 'visible' : 'hidden';
     }
-    //CONNECTOR
-// startMove(evt) {
-//   this.appData.touch = (evt.type === "touchstart");
-// 	if (!this.appData.touch && evt.button !== 0) return;
-// 	this.appData.events = this.appData.touch ? { move: "touchmove", stop: "touchend"} : { move: "mousemove", stop: "mouseup"};
-  
-//   this.appData.moving = true
-// 	requestAnimationFrame(this.updateFn)
-//   this.moveFn(evt)
-  
-// 	this.appData.elem.addEventListener(this.appData.events.move, this.moveFn)
-// 	this.appData.elem.addEventListener(this.appData.events.stop, this.stopFn)
-// },
-// updateFn: function() {
-// },
-// moveFn: function (evt){
-// },
-// stopFn: function(evt) {
-//   this.appData.moving = false
-//   this.appData.elem.removeEventListener(this.appData.events.move, this.moveFn)
-//   this.appData.elem.removeEventListener(this.appData.events.stop, this.stopFn)
-// },
-// getPos: function (evt) {
-//   return this.appData.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
-// },
-// getMousePos: function (mouseEvent) {
-//   this.appData.point.x = (mouseEvent.clientX);
-//   this.appData.point.y = (mouseEvent.clientY);
-// },
-// getTouchPos: function (touchEvent) {
-//   this.appData.point.x = (touchEvent.touches[0].clientX);
-//   this.appData.point.y = (touchEvent.touches[0].clientY);
-// },
-// visibility: function(){
-//   return this.appData.moving ? 'visible' : 'hidden';
-// }
   },
   computed: {
     pluginPos: function(){
