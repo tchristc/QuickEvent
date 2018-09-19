@@ -374,18 +374,6 @@ var vm = new Vue({
       return pluginsOrdered(this.appData.plugins);
     }
   }
-  // watch:{
-  //   appData: {
-  //     handler: function (val, oldVal) {},
-  //     deep: true
-  //   },
-  //   pluginsOrdered: {
-  //     handler: function (val, oldVal) {
-  //       val.forEach(p=>console.log(p.id + ": " +p.order));
-  //     },
-  //     deep: true
-  //   }
-  // }
 });
 
 function reorderPlugins(plugins){
