@@ -103,7 +103,7 @@
             :x2="c.in.plugin.x+(appData.re)" 
             :y2="c.in.plugin.y+(10*(c.in.port.order))+6"></line>
         </g>
-        <template v-if="appData.selectedPlugin">
+        <template v-if="appData.selectedPort">
           <line class="connector-line" 
             :x1="appData.selectedPlugin.x+appData.selectedPlugin.w+(appData.re)*2+7" 
             :y1="appData.selectedPlugin.y+(10*(appData.selectedPort.order))+6" 
