@@ -116,6 +116,8 @@
             :y1="c.out.plugin.y+(10*(c.out.port.order))+6" 
             :x2="c.in.plugin.x+(appData.re)" 
             :y2="c.in.plugin.y+(10*(c.in.port.order))+6"></line>
+            <circle :cx="c.out.plugin.x+c.out.plugin.w+(appData.re)*2+7" :cy="c.out.plugin.y+(10*(c.out.port.order))+6" :r="appData.rs-1" />
+            <circle :cx="c.in.plugin.x+(appData.re)" :cy="c.in.plugin.y+(10*(c.in.port.order))+6" :r="appData.rs-1" />
         </g>
         <template v-if="appData.selectedPort">
           <line class="connector-line" 
@@ -124,6 +126,8 @@
             :x2="appData.pointer.x-8" 
             :y2="appData.pointer.y-30">
           </line>
+          <circle :cx="appData.selectedPlugin.x+appData.selectedPlugin.w+(appData.re)*2+7" :cy="appData.selectedPlugin.y+(10*(appData.selectedPort.order))+6" :r="appData.rs-1" />
+          <circle :cx="appData.pointer.x-10" :cy="appData.pointer.y-30" :r="appData.rs-1" />
         </template>
     </svg>
 </div>
