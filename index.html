@@ -62,7 +62,7 @@
     .connector-line {
       fill:lightgreen;
       stroke:black;
-      stroke-width:2;
+      stroke-width:1;
     }
 
     @keyframes circle-zoom-in{
@@ -98,9 +98,10 @@
       cursor:pointer;
       animation: circle-zoom-in .25s forwards;
     }
-
+  
     .plugin-connector-in {
     }
+    
     .plugin-connector-out {
     }
 </style>
@@ -134,7 +135,7 @@
     @touchstart.prevent="startMove">
     <defs>
       <clipPath :id="'cut-body-'+data.id">
-        <rect x="" y="11" :width="data.w+30" :height="data.h-20" />
+        <rect x="0" y="11" :width="data.w+30" :height="data.h-20" />
       </clipPath>
       <clipPath :id="'cut-header-'+data.id">
           <rect x="0" y="0" :width="data.w+30" height="11" />
