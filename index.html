@@ -103,6 +103,14 @@
             :x2="c.in.plugin.x+(appData.re)" 
             :y2="c.in.plugin.y+(10*(c.in.port.order))+6"></line>
         </g>
+        <template v-if="appData.selectedPlugin">
+          <line class="connector-line" 
+            :x1="appData.selectedPlugin.x+appData.selectedPlugin.w+(appData.re)*2+7" 
+            :y1="appData.selectedPlugin.y+(10*(appData.selectedPort.order))+6" 
+            :x2="appData.pointer.x-8" 
+            :y2="appData.pointer.y-30">
+          </line>
+        </template>
     </svg>
 </div>
 
@@ -121,7 +129,6 @@
           <text :x="70" :y="(i+1)*10+10">Output {{(i+1)}}</text>
           <circle class="plugin-connector plugin-connector-in" :data-pluginid="data.id" :data-portid="port.id" :cx="appData.re" :cy="10*(i+1)+6" :r="appData.rs" />
           <circle class="plugin-connector plugin-connector-out" :data-pluginid="data.id" :data-portid="port.id" :cx="xs+data.w+appData.re+1" :cy="10*(i+1)+6" :r="appData.rs" />
-          <!-- <line class="connector-line" :x1="xs+data.w+appData.re+1" :y1="10*(i+1)+6" :x2="appData.pointer.x" :y2="appData.pointer.y" ref="connector-line" :visibility="visibility()"> </line> -->
         </g>
     </g>
   </svg>
@@ -130,8 +137,8 @@
 <script>
   var appData = {
     plugins: [
-      { id:1, x: 3, y: 3, w:100, h:50, ports: [{id:1, order:1, in:true, out:true, selected: false,elem:null}]},
-      { id:2, x: 150, y:3, w:100, h:50, ports: [{id:1, order:1, in:true, out:true, selected: false,elem:null},{id:2, order:2, in:true, out:false, selected: false,elem:null}]}
+      { id:1, x: 3, y: 3, w:100, h:50, ports: [{id:1, order:1, in:true, out:true, selected: false}]},
+      { id:2, x: 150, y:3, w:100, h:50, ports: [{id:1, order:1, in:true, out:true, selected: false},{id:2, order:2, in:true, out:false, selected: false}]}
     ],
     connections: [],
     selected: null,
@@ -142,41 +149,14 @@
     transform: {},
     point: {x:0,y:0},
     pointer: {x:0,y:0},
+    offset: {x:0,y:0},
     rs: 3,
     re: 5,
     pluginId: null,
-    portId: null
+    portId: null,
+    selectedPlugin: null,
+    selectedPort: null
   };
-
-Vue.component('pipeline', {
-  props: ['appData', 'appData.elem'],
-  template: '#pipeline-template',
-  created: function(){
-    console.log(this.appData);
-  },
-  mounted: function(){
-    this.appData.elem = document.querySelector("#svgCanvas");
-    this.appData.point = this.appData.elem.createSVGPoint();
-  },
-  methods:{
-    movePointer: function(evt){
-      this.getPos(evt);
-      this.appData.pointer.x = evt.clientX-8;
-      this.appData.pointer.y = evt.clientY-30
-    },
-    getPos: function (evt) {
-      return this.appData.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
-    },
-    getMousePos: function (mouseEvent) {
-      this.appData.point.x = (mouseEvent.clientX);
-      this.appData.point.y = (mouseEvent.clientY);
-    },
-    getTouchPos: function (touchEvent) {
-      this.appData.point.x = (touchEvent.touches[0].clientX);
-      this.appData.point.y = (touchEvent.touches[0].clientY);
-    }
-  }
-});
 
 Vue.component('plugin', {
   props: ['data'],
@@ -191,13 +171,16 @@ Vue.component('plugin', {
   },
   methods: {
     startMove(evt) {
-      
       if(evt.target.classList.contains("plugin-connector-in")){
         return;
       }
       else if(evt.target.classList.contains("plugin-connector-out")){
         appData.pluginId = evt.target.getAttribute("data-pluginid");
         appData.portId = evt.target.getAttribute("data-portid");
+        var port = findPort(this.data, appData.portId);
+        appData.selectedPlugin = this.data;
+        appData.selectedPort =  port;
+        port.selected = true;
         appData.selected = "plugin-connector-out";
         this.startMoveConnector(evt);
       }
@@ -271,7 +254,7 @@ Vue.component('plugin', {
       appData.moving = true
       requestAnimationFrame(this.updateConnector)
       this.moveConnector(evt)
-      
+
       appData.elem.addEventListener(appData.events.move, this.moveConnector)
       appData.elem.addEventListener(appData.events.stop, this.stopConnector)
     },
@@ -280,6 +263,9 @@ Vue.component('plugin', {
     moveConnector: function (evt){
     },
     stopConnector: function(evt) {
+      var port = findPort(this.data, appData.portId);
+      port.selected = false;
+
       if(evt.target.classList.contains("plugin-connector-in")){
         var pluginIdIn = evt.target.getAttribute("data-pluginid");
         var portIdIn = evt.target.getAttribute("data-portid");
@@ -290,11 +276,10 @@ Vue.component('plugin', {
       appData.selected = null;
       appData.pluginId = null;
       appData.portId   = null;
+      appData.selectedPlugin = null;
+      appData.selectedPort =  null;
       appData.elem.removeEventListener(appData.events.move, this.moveConnector)
       appData.elem.removeEventListener(appData.events.stop, this.stopConnector)
-    },
-    visibility: function(){
-      return appData.moving && appData.selected === "plugin-connector-out" ? 'visible' : 'hidden';
     }
   },
   computed: {
@@ -325,28 +310,16 @@ var vm = new Vue({
     addPlugin: function (e) {
       e.preventDefault();
       var max = this.appData.plugins.reduce(function(a, b) { return ( a.id > b.id ? a : b ); }); 
-      this.appData.plugins.push({ id: max.id+1, x: 3, y: 3, w:100, h:50, ports: [{id:1, order:1, in:true, out:true, selected: false,elem:null}]});
+      this.appData.plugins.push({ id: max.id+1, x: 3, y: 3, w:100, h:50, ports: [{id:1, order:1, in:true, out:true, selected: false}]});
     },
     removePlugin: function (stat) {
       this.appData.plugins.splice(this.appData.plugins.indexOf(stat), 1);
     },
-    // addConnection: function(pluginIdOut, portIdOut, pluginIdIn, portIdIn){
-    //   var pluginOut = this.findPlugin(pluginIdOut);
-    //   var portOut = this.findPort(pluginOut, portIdOut);
-    //   var pluginIn = this.findPlugin(pluginIdIn);
-    //   var portIn = this.findPort(pluginIn, portIdIn);
-    //   appData.connections.push({out:{plugin: pluginOut,  port: portOut},in:{plugin: pluginIn, port: portIn}});
-    // },
-    // findPlugin: function(id){
-    //   return appData.plugins.find(function(plugin){return plugin.id == id;})
-    // },
-    // findPort: function(plugin, id){
-    //   return plugin.ports.find(function(port){return port.id == id;})
-    // },
     movePointer: function(evt){
       this.getPos(evt);
-      this.appData.pointer.x = evt.clientX-8;
-      this.appData.pointer.y = evt.clientY-30
+
+      this.appData.pointer.x = evt.clientX;
+      this.appData.pointer.y = evt.clientY;
     },
     getPos: function (evt) {
       return this.appData.touch ? this.getTouchPos(evt) : this.getMousePos(evt);
@@ -362,26 +335,17 @@ var vm = new Vue({
   }
 });
 
-    function addConnection(pluginIdOut, portIdOut, pluginIdIn, portIdIn){
-      var pluginOut = findPlugin(pluginIdOut);
-      var portOut = findPort(pluginOut, portIdOut);
-      var pluginIn = findPlugin(pluginIdIn);
-      var portIn = findPort(pluginIn, portIdIn);
-      appData.connections.push({out:{plugin: pluginOut,  port: portOut},in:{plugin: pluginIn, port: portIn}});
-    }
-    function findPlugin(id){
-      return appData.plugins.find(function(plugin){return plugin.id == id;})
-    }
-    function findPort(plugin, id){
-      return plugin.ports.find(function(port){return port.id == id;})
-    }
-// appData.connections.push({
-//   out:{plugin:appData.plugins[0],  port:appData.plugins[0].ports[0]},
-//   in:{plugin:appData.plugins[1], port:appData.plugins[1].ports[0]}});
-
-// appData.connections.push({
-//   out:{plugin:appData.plugins[0],  port:appData.plugins[0].ports[0]},
-//   in:{plugin:appData.plugins[1], port:appData.plugins[1].ports[1]}});
-//vm.addConnection(1,1,2,1);
-//vm.addConnection(1,1,2,2);
+function addConnection(pluginIdOut, portIdOut, pluginIdIn, portIdIn){
+  var pluginOut = findPlugin(pluginIdOut);
+  var portOut = findPort(pluginOut, portIdOut);
+  var pluginIn = findPlugin(pluginIdIn);
+  var portIn = findPort(pluginIn, portIdIn);
+  appData.connections.push({out:{plugin: pluginOut,  port: portOut},in:{plugin: pluginIn, port: portIn}});
+}
+function findPlugin(id){
+  return appData.plugins.find(function(plugin){return plugin.id == id;})
+}
+function findPort(plugin, id){
+  return plugin.ports.find(function(port){return port.id == id;})
+}
 </script>
